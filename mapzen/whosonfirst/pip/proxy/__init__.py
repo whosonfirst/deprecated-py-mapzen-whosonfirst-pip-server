@@ -6,6 +6,8 @@ import logging
 import json
 import subprocess
 import tempfile
+import signal
+import urllib2
 
 class server:
 
@@ -36,6 +38,10 @@ class server:
     def get_pid(self, placetype):
 
         pid_file = self.get_pid_file(placetype)
+
+        if not os.path.exists(pid_file):
+            return None
+
         pid_fh = open(pid_file, "r")
 
         pid = pid_fh.readline()
@@ -55,7 +61,12 @@ class server:
 
     def is_server_running(self, placetype):
 
-        pid = str(self.get_pid(placetype))
+        pid = self.get_pid(placetype)
+
+        if not pid:
+            return False
+
+        pid = str(pid)
 
         # ps h -p ${PID} | wc -l
         
