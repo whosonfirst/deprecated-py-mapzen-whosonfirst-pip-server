@@ -2,6 +2,8 @@
 
 Python utilities for working with the go-whosonfirst-pip proxy servers.
 
+_This is possibly a mis-labeled package in that it handles the sub-servers started by the proxy server but right now I am just trying to get it to work..._
+
 ## Usage
 
 The short version is "too soon". If you're feeling 
