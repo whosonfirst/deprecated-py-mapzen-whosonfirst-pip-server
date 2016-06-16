@@ -8,6 +8,7 @@ import subprocess
 import tempfile
 import signal
 import urllib2
+import time
 
 class server:
 
@@ -139,17 +140,27 @@ class server:
         except Exception, e:
             return False
 
-    # wait for server to respond to a ping, like on startup
+    # wait for one or more servers to respond to a ping, like on startup
 
-    def wait_for_godot(self, placetype):
+    def wait_for_godot(self, placetypes=None):
+
+        if not placetypes:
+            placetypes = self.proxy_config.keys()
 
         while True:
 
             pending = False
 
-            if not self.ping_server(placetype):
-                logging.info("ping for %s failed, waiting" % placetype)
-                pending = True
+            for pt in placetypes:
+
+                if not self.ping_server(pt):
+
+                    logging.info("ping for %s failed" % pt)
+                    pending = True
+                    break
 
             if not pending:
                 break
+
+            logging.info("waiting for godot...")
+            time.sleep(1)

@@ -6,7 +6,7 @@ _This is possibly a mis-labeled package in that it handles the sub-servers start
 
 ## Usage
 
-The short version is "too soon". If you're feeling 
+The short version is "too soon". If you're feeling like an adventure:
 
 ```
 wof_data = "/path/to/whosonfirst-data/data"
@@ -24,7 +24,7 @@ if p.is_server_running(placetype):
 else:
 
 	p.start_server(placetype, pip_server=pip_server, data=wof_data)
-	p.wait_for_godot(placetype)
+	p.wait_for_godot([placetype])
 
 print p.is_server_running(placetype)
 print p.ping_server(placetype)
