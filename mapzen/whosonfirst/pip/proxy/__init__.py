@@ -23,7 +23,29 @@ class server:
             pt = cfg['Target']
             proxy_config[pt] = cfg
 
+        self.cfg = cfg
         self.proxy_config = proxy_config
+
+class proxy_server(server):
+
+    # PLEASE WRITE ME
+
+    def start_server(self):
+
+        """
+        cmd = [ proxy_server, "-host", options.proxy_host, "-port", options.proxy_port, "-config", options.proxy_config ]
+        logging.debug(cmd)
+        
+        proc = subprocess.Popen(cmd)
+        """
+
+        return False
+
+class pip_servers(server):
+
+    def __init__(self, cfg, **kwargs):
+
+        server.__init__(self, cfg, **kwargs)
 
         self.pid_root = kwargs.get("pid_root", tempfile.gettempdir())
 
