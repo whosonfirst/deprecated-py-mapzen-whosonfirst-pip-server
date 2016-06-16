@@ -45,11 +45,19 @@ class server:
 
         return pid
         
-    # ps h -p ${PID} | wc -l
+    def write_pid(self, placetype, pid):
 
-    def is_proxy_running(self, placetype):
+        pid_file = self.get_pid_file(placetype)
+
+        fh = open(pid_file, "w")
+        fh.write(str(pid))
+        fh.close()
+
+    def is_server_running(self, placetype):
 
         pid = str(self.get_pid(placetype))
+
+        # ps h -p ${PID} | wc -l
         
         cmd = [ "ps", "h", "-p", pid ]
         logging.info(" ".join(cmd))
@@ -68,42 +76,69 @@ class server:
 
         return True
 
-    def start_proxy(self, placetype):
+    def start_server(self, placetype, **kwargs):
 
-        return False
+        pip_server = kwargs.get('pip_server', None)
+        data = kwargs.get('data', None)
 
-        """
-        # because this typically gets invoked as user 'www-data'
-        # pid_dirname = "/var/run"
+        if not pip_server:
+            raise Exception, "Y U NO pip-server"
 
-        pid_dirname = tempfile.gettempdir()
-        pid_basename = "wof-pip-proxy-%s.pid" % target['Target']
+        if not data:
+            raise Exception, "Y U NO data"
 
-        pid_file = os.path.join(pid_dirname, pid_basename)
+        cfg = self.proxy_config[placetype]
 
-        # PID=`cat /var/run/foo.pid`
-        # ps h -p ${PID} | wc -l
-
-        cmd = [ pip_server, "-cors", "-port", str(target['Port']), "-data", options.data, target['Meta'] ]
+        cmd = [ pip_server, "-cors", "-port", str(cfg['Port']), "-data", data, cfg['Meta'] ]
         logging.debug(cmd)
 
         proc = subprocess.Popen(cmd)
-        procs.append(proc)
-
         pid = proc.pid
-        logging.info("start %s pip server with PID %s" % (target['Target'], pid))
 
-        fh = open(pid_file, "w")
-        fh.write(str(pid))
-        fh.close()
-        """
+        logging.info("start %s pip server with PID %s" % (placetype, pid))
 
-    # stop server
+        self.write_pid(placetype, pid)
+        return proc
 
-    def stop_proxy(self, placetype):
+    def stop_server(self, placetype):
 
-        return False
+        pid_file = self.get_pid_file(placetype)
+        pid = self.get_pid(placetype)
 
-    def ping_proxy(self, placetype):
+        os.kill(pid, signal.SIGKILL)
 
-        return False
+        if os.path.exists(pid_file):
+            os.unlink(pid_file)
+
+        return True
+
+    def ping_server(self, placetype):
+
+        cfg = self.proxy_config[placetype]
+        url = "http://localhost:%s" % cfg['Port']
+
+        req = urllib2.Request(url)
+        req.get_method = lambda : 'HEAD'
+
+        try:
+            urllib2.urlopen(req)
+            return True
+        except urllib2.HTTPError, e:
+            return True
+        except Exception, e:
+            return False
+
+    # wait for server to respond to a ping, like on startup
+
+    def godot(self, placetype):
+
+        while True:
+
+            pending = False
+
+            if not self.ping_server(placetype):
+                logging.info("ping for %s failed, waiting" % placetype)
+                pending = True
+
+            if not pending:
+                break
