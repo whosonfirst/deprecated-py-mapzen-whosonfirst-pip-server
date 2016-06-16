@@ -141,7 +141,7 @@ class server:
 
     # wait for server to respond to a ping, like on startup
 
-    def godot(self, placetype):
+    def wait_for_godot(self, placetype):
 
         while True:
 
