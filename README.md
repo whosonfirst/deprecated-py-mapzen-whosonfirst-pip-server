@@ -1,8 +1,6 @@
-# py-mapzen-whosonfirst-pip-proxy
+# py-mapzen-whosonfirst-pip-server
 
-Python utilities for working with the go-whosonfirst-pip proxy servers.
-
-_This is possibly a mis-labeled package in that it handles the sub-servers started by the proxy server but right now I am just trying to get it to work..._
+Python utilities for working with the go-whosonfirst-pip pip and proxy servers.
 
 ## Usage
 
@@ -14,7 +12,7 @@ pip_server = "/path/to/go-whosonfirst-pip/bin/wof-pip-server"
 proxy_config = "/path/to/wof-pip-proxy.json"
 placetype = "locality"
 
-pip = mapzen.whosonfirst.pip.proxy.pip_servers(proxy_config)
+pip = mapzen.whosonfirst.pip.server.pip_servers(proxy_config)
 print pip.ping_server(placetype)
 
 if pip.is_server_running(placetype):

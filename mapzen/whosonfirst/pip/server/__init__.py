@@ -10,7 +10,7 @@ import signal
 import urllib2
 import time
 
-class server:
+class base:
 
     def __init__(self, cfg, **kwargs):
 
@@ -26,7 +26,7 @@ class server:
         self.cfg = cfg
         self.proxy_config = proxy_config
 
-class proxy_server(server):
+class proxy_server(base):
 
     # PLEASE WRITE ME
 
@@ -41,11 +41,11 @@ class proxy_server(server):
 
         return False
 
-class pip_servers(server):
+class pip_servers(base):
 
     def __init__(self, cfg, **kwargs):
 
-        server.__init__(self, cfg, **kwargs)
+        base.__init__(self, cfg, **kwargs)
 
         self.pid_root = kwargs.get("pid_root", tempfile.gettempdir())
 
@@ -74,13 +74,17 @@ class pip_servers(server):
 
         return pid
         
-    def write_pid(self, placetype, pid):
+    def write_pid(self, placetype, pid, **kwargs):
 
         pid_file = self.get_pid_file(placetype)
 
         fh = open(pid_file, "w")
         fh.write(str(pid))
         fh.close()
+
+        # PLEASE FIX ME - check kwargs for rules about
+        # ownership and permissions on tmp files
+        # (20160616/thisisaaronland)
 
     def is_server_running(self, placetype):
 
@@ -124,6 +128,14 @@ class pip_servers(server):
         cfg = self.proxy_config[placetype]
 
         cmd = [ pip_server, "-cors", "-port", str(cfg['Port']), "-data", data, cfg['Meta'] ]
+
+        if kwargs.get('sudo', False):
+
+            sudo = [ "sudo", "-u", kwargs["sudo"] ]
+            sudo.extend(cmd)
+
+            cmd = sudo
+
         logging.debug(cmd)
 
         proc = subprocess.Popen(cmd)
@@ -134,15 +146,25 @@ class pip_servers(server):
         self.write_pid(placetype, pid)
         return proc
 
-    def stop_server(self, placetype):
+    def stop_server(self, placetype, **kwargs):
 
         pid_file = self.get_pid_file(placetype)
         pid = self.get_pid(placetype)
 
-        os.kill(pid, signal.SIGKILL)
+        if kwargs.get('sudo', False):
+
+            cmd = [ "sudo", "kill", "-9", str(pid) ]
+            logging.debug(cmd)
+
+            out = subprocess.check_output(cmd)
+            logging.debug(out)
+
+        else:
+            os.kill(pid, signal.SIGKILL)
 
         if os.path.exists(pid_file):
-            os.unlink(pid_file)
+            print "remove %s" % pid_file
+            # os.unlink(pid_file)
 
         return True
 
