@@ -27,6 +27,7 @@ setup(
         ],
     packages=packages,
     scripts=[
+        "scripts/wof-pip-start-proxy"
         ],
     download_url='https://github.com/mapzen/py-mapzen-whosonfirst-pip-server/releases/tag/' + version,
     license='BSD')

@@ -7,7 +7,7 @@ import json
 import subprocess
 import tempfile
 import signal
-import urllib2
+import requests
 import time
 
 class base:
@@ -74,18 +74,6 @@ class pip_servers(base):
 
         return pid
         
-    def write_pid(self, placetype, pid, **kwargs):
-
-        pid_file = self.get_pid_file(placetype)
-
-        fh = open(pid_file, "w")
-        fh.write(str(pid))
-        fh.close()
-
-        # PLEASE FIX ME - check kwargs for rules about
-        # ownership and permissions on tmp files
-        # (20160616/thisisaaronland)
-
     def is_server_running(self, placetype):
 
         pid = self.get_pid(placetype)
@@ -93,11 +81,11 @@ class pip_servers(base):
         if not pid:
             return False
 
-        pid = str(pid)
-
         # ps h -p ${PID} | wc -l
         
         cmd = [ "ps", "h", "-p", pid ]
+        cmd = map(str, cmd)
+
         logging.info(" ".join(cmd))
 
         try:
@@ -109,7 +97,7 @@ class pip_servers(base):
         out = out.strip()
         logging.debug(out)
 
-        if not out.startswith(pid):
+        if not out.startswith(str(pid)):
             return False
 
         return True
@@ -127,7 +115,15 @@ class pip_servers(base):
 
         cfg = self.proxy_config[placetype]
 
-        cmd = [ pip_server, "-cors", "-port", str(cfg['Port']), "-data", data, cfg['Meta'] ]
+        pidfile = self.get_pid_file(placetype)
+
+        cmd = [
+            pip_server, "-cors",
+            "-port", cfg['Port'],
+            "-data", data,
+            "-pidfile", pidfile,
+            cfg['Meta']
+        ]
 
         if kwargs.get('sudo', False):
 
@@ -136,14 +132,14 @@ class pip_servers(base):
 
             cmd = sudo
 
-        logging.debug(cmd)
+        cmd = map(str, cmd)
+        logging.info(" ".join(cmd))
 
         proc = subprocess.Popen(cmd)
         pid = proc.pid
 
         logging.info("start %s pip server with PID %s" % (placetype, pid))
 
-        self.write_pid(placetype, pid)
         return proc
 
     def stop_server(self, placetype, **kwargs):
@@ -153,8 +149,10 @@ class pip_servers(base):
 
         if kwargs.get('sudo', False):
 
-            cmd = [ "sudo", "kill", "-9", str(pid) ]
-            logging.debug(cmd)
+            cmd = [ "sudo", "kill", "-HUP", str(pid) ]
+            cmd = map(str, cmd)
+
+            logging.info(" ".join(cmd))
 
             out = subprocess.check_output(cmd)
             logging.debug(out)
@@ -162,9 +160,25 @@ class pip_servers(base):
         else:
             os.kill(pid, signal.SIGKILL)
 
-        if os.path.exists(pid_file):
-            print "remove %s" % pid_file
-            # os.unlink(pid_file)
+        return True
+
+    def restart_server(self, placetype, **kwargs):
+
+        pid_file = self.get_pid_file(placetype)
+        pid = self.get_pid(placetype)
+
+        if kwargs.get('sudo', False):
+
+            cmd = [ "sudo", "kill", "-USR2", str(pid) ]
+            cmd = map(str, cmd)
+
+            logging.info(" ".join(cmd))
+
+            out = subprocess.check_output(cmd)
+            logging.debug(out)
+
+        else:
+            os.kill(pid, signal.SIGUSR2)
 
         return True
 
@@ -173,15 +187,27 @@ class pip_servers(base):
         cfg = self.proxy_config[placetype]
         url = "http://localhost:%s" % cfg['Port']
 
-        req = urllib2.Request(url)
-        req.get_method = lambda : 'HEAD'
+        # req = urllib2.Request(url)
+        # req.get_method = lambda : 'HEAD'
 
         try:
-            urllib2.urlopen(req)
-            return True
-        except urllib2.HTTPError, e:
-            return True
+
+            # urllib2.urlopen(req)
+            # return True
+
+            rsp = requests.head(url)
+
+            if rsp.status_code == 200:
+                return True
+
+            if rsp.status_code == 400:
+                return True
+
+            logging.info("%s returned %s" % (url, rsp.status_code))
+            return False
+
         except Exception, e:
+            logging.info("failed to %s, because %s" % (url, e))
             return False
 
     # wait for one or more servers to respond to a ping, like on startup
