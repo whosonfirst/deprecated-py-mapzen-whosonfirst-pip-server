@@ -101,6 +101,10 @@ if __name__ == '__main__':
     procs.append(proc)
 
     # Now just sit around waiting for a SIGINT
+    # https://en.wikipedia.org/wiki/Unix_signal#POSIX_signals
+    # https://pymotw.com/2/signal/
+
+    # sudo kill -USR1 11799
 
     def signal_handler(signal, frame):
 
@@ -109,7 +113,7 @@ if __name__ == '__main__':
 
         raise Exception, "all done"
 
-    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGUSR1, signal_handler)
 
     try:
         while True:
