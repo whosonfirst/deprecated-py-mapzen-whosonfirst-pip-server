@@ -57,6 +57,9 @@ if __name__ == '__main__':
 
     # Parse the spec/config
 
+    # TO DO: GENERATE CONFIG ON FLY IF NECESSARY...
+    # https://github.com/whosonfirst/py-mapzen-whosonfirst-pip-server/issues/2
+
     try:
         fh = open(options.proxy_config, "r")
         spec = json.load(fh)
@@ -64,7 +67,7 @@ if __name__ == '__main__':
         logging.error("failed to open %s, because %s" % options.proxy_config, e)
         sys.exit(1)
 
-    procs = []
+    procs = {}
 
     # Do some basic sanity checking on the config
 
@@ -85,7 +88,7 @@ if __name__ == '__main__':
         pt = target['Target']
 
         proc = pip.start_server(pt, pip_server=pip_server, data=options.data)
-        procs.append(proc)
+        procs[pt] = proc
 
     # Wait for the PIP servers to finish indexing
 
@@ -98,22 +101,49 @@ if __name__ == '__main__':
     logging.debug(cmd)
 
     proc = subprocess.Popen(cmd)
-    procs.append(proc)
+    procs['__proxy__'] = proc
 
-    # Now just sit around waiting for a SIGINT
+    # Now just sit around waiting for a SIGUSR1
     # https://en.wikipedia.org/wiki/Unix_signal#POSIX_signals
     # https://pymotw.com/2/signal/
 
     # sudo kill -USR1 11799
 
-    def signal_handler(signal, frame):
+    def signal_handler(s, frame):
 
-        for p in procs:
-            p.terminate()
+        for pt, proc in procs.items():
+
+            if pt == '__proxy__':
+                proc.terminate()
+                continue
+
+            # See this - it is to account for instances where one of more
+            # of the pip servers will have been restarted independently and
+            # the PID associated with the starting proc is no longer valid.
+            # See also: the USR2 signal handling in go-whosonfirst-pip
+            # (20160807/thisisaaronland)
+
+            expected_pid = proc.pid
+            actual_pid = pip.get_pid(pt)
+
+            pidfile = pip.get_pid_file(pt)
+
+            logging.debug("expected %s actual %s pidfile %s" % (expected_pid, actual_pid, pidfile))
+
+            if expected_pid == actual_pid:
+                proc.terminate()
+            else:
+                os.kill(actual_pid, signal.SIGKILL)
+                proc.terminate()
+
+            if os.path.exists(pidfile):
+                os.unlink(pidfile)
 
         raise Exception, "all done"
 
     signal.signal(signal.SIGUSR1, signal_handler)
+    signal.signal(signal.SIGHUP, signal_handler)
+    signal.signal(signal.SIGINT, signal_handler)
 
     try:
         while True:
