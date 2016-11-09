@@ -2,6 +2,10 @@
 
 Python utilities for working with the go-whosonfirst-pip pip and proxy servers.
 
+## Important
+
+This package has been deprecated. You should use [py-mapzen-whosonfirst-pip](https://github.com/whosonfirst/py-mapzen-whosonfirst-pip) instead.
+
 ## Usage
 
 The short version is "too soon". If you're feeling like an adventure:
